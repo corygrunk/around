@@ -9,3 +9,5 @@ a looper with more loops for monome norns
 5. E1 cycles through the extra loops
 6. When one of the loops is selected, E2 moves it. E3 resizes it.
 7. Hold Alt and you can make more changes to the loops.
+
+8. K3 resets everything including deleting the main loop.
