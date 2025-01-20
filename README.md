@@ -1,7 +1,7 @@
 # looplooploop
 a looper with more loops for monome norns
 
-Quick start
+### Quick start
 1. Play audio through your norns. 
 2. Press K2 to start recording the loop. 
 3. K2 again starts looping and starts up the extra playheads.
