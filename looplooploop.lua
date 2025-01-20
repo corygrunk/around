@@ -362,8 +362,51 @@ function init()
       }
   end
 
-  -- FX Level (affects all microloops)
+  params:add_separator("Pan Settings")
+  
+  -- Default pan positions: left, center, right for the three micro-loops
   params:add{
+    type = "control",
+    id = "voice_2_pan",
+    name = "Micro Loop 1 Pan",
+    controlspec = controlspec.new(-1.0, 1.0, 'lin', 0.01, -0.7),  -- Default to left
+    action = function(value)
+      if not buffer_is_clear then
+        sc.pan(2, value)
+      end
+    end
+  }
+  
+  params:add{
+    type = "control",
+    id = "voice_3_pan",
+    name = "Micro Loop 2 Pan",
+    controlspec = controlspec.new(-1.0, 1.0, 'lin', 0.01, 0.0),  -- Default to center
+    action = function(value)
+      if not buffer_is_clear then
+        sc.pan(3, value)
+      end
+    end
+  }
+  
+  params:add{
+    type = "control",
+    id = "voice_4_pan",
+    name = "Micro Loop 3 Pan",
+    controlspec = controlspec.new(-1.0, 1.0, 'lin', 0.01, 0.7),  -- Default to right
+    action = function(value)
+      if not buffer_is_clear then
+        sc.pan(4, value)
+      end
+    end
+  }
+
+
+  -- Recording Settings
+  params:add_separator("Recording Settings")
+  
+  -- FX Level (affects all microloops)
+    params:add{
       type = "control",
       id = "fx_level",
       name = "FX Level",
@@ -378,9 +421,6 @@ function init()
       end
   }
 
-  -- Recording Settings
-  params:add_separator("Recording Settings")
-  
   params:add{
       type = "control",
       id = "pre_level",
@@ -430,6 +470,10 @@ function init()
     sc.rate_slew_time(i,0)
     sc.recpre_slew_time(i,0)
     sc.phase_quant(i, 0.01)  -- Set phase tracking for all voices
+  end
+
+  for i = 2, 4 do
+    sc.pan(i, params:get("voice_" .. i .. "_pan"))
   end
 
   -- Initialize LFOs for each micro loop
