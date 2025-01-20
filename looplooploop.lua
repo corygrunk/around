@@ -602,6 +602,7 @@ function key(n,z)
         update_content(1,start[1],start[1] + length[1],128)
         start_addl_playheads()
         active_voice = 1
+        rec_msg = ''
       elseif overdub then
         overdub = false
         sc.rec(1,0)
