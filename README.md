@@ -1,4 +1,4 @@
-# looploop
+# around
 a looper with more loops for monome norns
 
 ### Quick start
