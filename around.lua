@@ -632,6 +632,7 @@ end
 
 -- fade out
 function start_fx_fade_out()
+  sc.play(1, 0) -- Stop main loop immediately
   local start_level = fx_level
   local main_start_level = voice_levels[1]
   local target_level = 0
@@ -660,6 +661,7 @@ function start_fx_fade_out()
     for v = 1, 4 do
       sc.level(v, 0)
     end
+    sc.level(1, voice_levels[1]) -- Restore main loop level
   end)
 end
 
