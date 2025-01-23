@@ -994,7 +994,7 @@ function redraw()
         screen.text('fading away...')
       else
         screen.level(15)
-        screen.text('k2 overdub   k3 clear')
+        screen.text('main loop')
       end
       
       if alt_mode then
