@@ -723,14 +723,14 @@ function key(n,z)
       sc.position(1, current_pos)
       sc.rec(1,1)
       sc.play(1,1)
-      rec_msg = 'rec'
+      rec_msg = 'recording...'
       buffer_is_clear = false
     elseif not fading_out then
       overdub = true
       local current_pos = position[1]
       sc.position(1, current_pos)
       sc.rec(1,1)
-      rec_msg = 'dub'
+      rec_msg = 'overdubbing...'
     end
   elseif n == 3 and z == 1 then
     if not buffer_is_clear then
@@ -1044,6 +1044,14 @@ function redraw()
     screen.level(6)
     screen.move(10,60)
     screen.text(rec_msg)
+  end
+
+  if not alt_mode and not buffer_is_clear and not recording and not overdub then
+    screen.move(10,60)
+    screen.text('k2 overdub')
+  
+    screen.move(120,60)
+    screen.text_right('k3 clear')
   end
 
   screen.update()
