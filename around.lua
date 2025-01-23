@@ -1,4 +1,4 @@
---- around
+---  around
 --- loops of loops
 --
 -- K1 alt functions
@@ -192,6 +192,60 @@ end
 
 
 function init()
+  -- Recording Settings
+  params:add_separator("Recording Settings")
+
+  params:add{
+    type = "control",
+    id = "fx_fade_in_time",
+    name = "FX Fade Time (s)",
+    controlspec = controlspec.new(0, 5, 'lin', 0.1, 1.0, 's'),
+    action = function(value)
+        fx_fade_time = value
+    end
+}
+
+    params:add{
+      type = "control",
+      id = "fx_level",
+      name = "FX Level",
+      controlspec = controlspec.new(0, 1, 'lin', 0.01, 1.0),
+      action = function(value)
+          fx_level = value
+          if not buffer_is_clear then
+              for i = 2, 4 do
+                  sc.level(i, voice_levels[i] * value)
+              end
+          end
+      end
+  }
+
+  params:add{
+      type = "control",
+      id = "pre_level",
+      name = "Pre Level",
+      controlspec = controlspec.new(0, 1, 'lin', 0.01, 0.2, ''),
+      action = function(value)
+          pre_level = value
+          for i = 1, 4 do
+              sc.pre_level(i, value)
+          end
+      end
+  }
+  
+  params:add{
+      type = "control",
+      id = "fade_time",
+      name = "Microloop Fade Time",
+      controlspec = controlspec.new(0.0, 1.0, 'lin', 0.01, 0.1, 's'),
+      action = function(value)
+          fade_time = value
+          for i = 1, 4 do
+              sc.fade_time(i, value)
+          end
+      end
+  }
+
   -- Main Loop/Buffer Settings
   params:add_separator("Main Loop Settings")
 
@@ -402,61 +456,6 @@ function init()
         sc.pan(4, value)
       end
     end
-  }
-
-
-  -- Recording Settings
-  params:add_separator("Recording Settings")
-  
-  params:add{
-    type = "control",
-    id = "fx_fade_in_time",
-    name = "FX Fade Time (s)",
-    controlspec = controlspec.new(0, 5, 'lin', 0.1, 1.0, 's'),
-    action = function(value)
-        fx_fade_time = value
-    end
-}
-
-    params:add{
-      type = "control",
-      id = "fx_level",
-      name = "FX Level",
-      controlspec = controlspec.new(0, 1, 'lin', 0.01, 1.0),
-      action = function(value)
-          fx_level = value
-          if not buffer_is_clear then
-              for i = 2, 4 do
-                  sc.level(i, voice_levels[i] * value)
-              end
-          end
-      end
-  }
-
-  params:add{
-      type = "control",
-      id = "pre_level",
-      name = "Pre Level",
-      controlspec = controlspec.new(0, 1, 'lin', 0.01, 0.2, ''),
-      action = function(value)
-          pre_level = value
-          for i = 1, 4 do
-              sc.pre_level(i, value)
-          end
-      end
-  }
-  
-  params:add{
-      type = "control",
-      id = "fade_time",
-      name = "Fade Time",
-      controlspec = controlspec.new(0.0, 1.0, 'lin', 0.01, 0.1, 's'),
-      action = function(value)
-          fade_time = value
-          for i = 1, 4 do
-              sc.fade_time(i, value)
-          end
-      end
   }
 
   -- Initialize softcut
@@ -840,7 +839,7 @@ function enc(n,d)
       if voice == 1 then
           if alt_mode then
               -- Alt + E3 controls main voice level
-              local new_level = util.clamp(voice_levels[1] + d/50, 0, 1)
+              local new_level = util.clamp(voice_levels[1] + d/10, 0, 1)
               voice_levels[1] = new_level
               params:set("voice_1_level", new_level)
               sc.level(1, new_level)
@@ -856,7 +855,7 @@ function enc(n,d)
       else
           if alt_mode then
               -- Alt + E3 controls level for individual micro loops
-              local new_level = util.clamp(voice_levels[voice] + d/10, 0, 1)
+              local new_level = util.clamp(voice_levels[voice] + d/50, 0, 1)
               voice_levels[voice] = new_level
               params:set("voice_" .. voice .. "_level", new_level)
               sc.level(voice, new_level * fx_level)  -- Apply the fx_level when setting individual level
