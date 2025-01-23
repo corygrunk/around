@@ -1,4 +1,4 @@
----  around
+--- around
 --- loops of loops
 --
 -- K1 alt functions
@@ -31,6 +31,9 @@ level = 1.0
 fade_time = 0.1
 pre_level = 0.2
 rate = 1.0
+
+fx_fade_time = 0 -- this controls how quickly the fx level fades in after recording/clearing
+clearing = false
 
 default_loop_length = 15
 length = {default_loop_length, default_loop_length, default_loop_length, default_loop_length}
@@ -405,7 +408,16 @@ function init()
   -- Recording Settings
   params:add_separator("Recording Settings")
   
-  -- FX Level (affects all microloops)
+  params:add{
+    type = "control",
+    id = "fx_fade_in_time",
+    name = "FX Fade Time (s)",
+    controlspec = controlspec.new(0, 5, 'lin', 0.1, 1.0, 's'),
+    action = function(value)
+        fx_fade_time = value
+    end
+}
+
     params:add{
       type = "control",
       id = "fx_level",
@@ -583,6 +595,75 @@ function start_addl_playheads()
   screen_dirty = true
 end
 
+
+-- fade in
+function start_fx_fade_in()
+  local start_level = 0
+  local target_level = params:get("fx_level")
+  local fade_duration = params:get("fx_fade_in_time")
+  
+  -- Set initial level to 0
+  fx_level = start_level
+  for i = 2, 4 do
+    sc.level(i, voice_levels[i] * start_level)
+  end
+  
+  clock.run(function()
+    local steps = 30 -- number of steps for smooth fade
+    local step_time = fade_duration / steps
+    local level_increment = (target_level - start_level) / steps
+    
+    for i = 1, steps do
+      clock.sleep(step_time)
+      fx_level = start_level + (level_increment * i)
+      -- Update all micro-loop levels
+      for v = 2, 4 do
+        sc.level(v, voice_levels[v] * fx_level)
+      end
+    end
+    
+    -- Ensure we end exactly at target level
+    fx_level = target_level
+    for v = 2, 4 do
+      sc.level(v, voice_levels[v] * fx_level)
+    end
+  end)
+end
+
+
+-- fade out
+function start_fx_fade_out()
+  local start_level = fx_level
+  local main_start_level = voice_levels[1]
+  local target_level = 0
+  local fade_duration = params:get("fx_fade_in_time")
+  
+  clock.run(function()
+    local steps = 30
+    local step_time = fade_duration / steps
+    local level_increment = (target_level - start_level) / steps
+    local main_level_increment = (target_level - main_start_level) / steps
+    
+    for i = 1, steps do
+      clock.sleep(step_time)
+      -- Fade microloops
+      fx_level = start_level + (level_increment * i)
+      for v = 2, 4 do
+        sc.level(v, voice_levels[v] * fx_level)
+      end
+      -- Fade main loop
+      local new_main_level = main_start_level + (main_level_increment * i)
+      sc.level(1, new_main_level)
+    end
+    
+    -- Ensure we end at silence
+    fx_level = target_level
+    for v = 1, 4 do
+      sc.level(v, 0)
+    end
+  end)
+end
+
 -- LFO helper functions
 function set_lfo_shape(lfo_index, shape)
   if lfos[lfo_index] then
@@ -615,63 +696,74 @@ function key(n,z)
   if n == 1 then
     alt_mode = (z == 1)
   elseif n == 2 and z == 1 then
-    if not recording and not overdub then
-      -- Start initial recording if nothing recorded yet
-      if buffer_is_clear then
-        recording = true
-        local current_pos = position[1]
-        sc.position(1, current_pos)
-        sc.rec(1,1)
-        sc.play(1,1)
-        rec_msg = 'rec'
-        buffer_is_clear = false
-      -- Start overdub if we already have something recorded
-      else
-        overdub = true
-        local current_pos = position[1]
-        sc.position(1, current_pos)
-        sc.rec(1,1)
-        rec_msg = 'dub'
-      end
-    -- Stop either recording or overdubbing
+    if recording then
+      recording = false
+      sc.rec(1,0)
+      length[1] = position[1] - start[1]
+      params:set("buffer_length", length[1])
+      sc.loop_end(1,start[1] + length[1])
+      sc.loop_start(1,start[1])
+      sc.position(1,start[1])
+      update_content(1,start[1],start[1] + length[1],128)
+      start_addl_playheads()
+      active_voice = 1
+      rec_msg = ''
+      start_fx_fade_in()
+    elseif overdub then
+      overdub = false
+      sc.rec(1,0)
+      rec_msg = ''
+    elseif buffer_is_clear then
+      recording = true
+      local current_pos = position[1]
+      sc.position(1, current_pos)
+      sc.rec(1,1)
+      sc.play(1,1)
+      rec_msg = 'rec'
+      buffer_is_clear = false
     else
-      if recording then
-        recording = false
-        sc.rec(1,0)
-        length[1] = position[1] - start[1]  -- Calculate actual length
-        params:set("buffer_length", length[1])
-        sc.loop_end(1,start[1] + length[1])  -- Set end point without extra 1
-        sc.loop_start(1,start[1])
-        sc.position(1,start[1])
-        update_content(1,start[1],start[1] + length[1],128)
-        start_addl_playheads()
-        active_voice = 1
-        rec_msg = ''
-      elseif overdub then
-        overdub = false
-        sc.rec(1,0)
-        rec_msg = ''
-      end
+      overdub = true
+      local current_pos = position[1]
+      sc.position(1, current_pos)
+      sc.rec(1,1)
+      rec_msg = 'dub'
     end
   elseif n == 3 and z == 1 then
-    -- clear
-    for i = 1, 4 do  -- Clear all 4 voices
-      start[i] = 1
-      length[i] = default_loop_length
-      position[i] = 0
-      sc.buffer_clear_channel(1)
-      sc.loop_start(i,start[i])
-      sc.loop_end(i,length[i])
-      sc.position(i,start[i])
-      sc.rec(i,0)
-      sc.play(i,0)
+    if not buffer_is_clear then
+      start_fx_fade_out()
+      clearing = true
+      rec_msg = ''
+      if overdub then
+        overdub = false
+        sc.rec(1,0)
+      end
+      
+      clock.run(function()
+        -- Wait for fade to complete
+        clock.sleep(params:get("fx_fade_in_time"))
+        -- Stop all voices after fade
+        for i = 1, 4 do
+          sc.play(i, 0)
+        end
+        -- Clear buffer and reset state
+        for i = 1, 4 do
+          start[i] = 1
+          length[i] = default_loop_length
+          position[i] = 0
+          sc.buffer_clear_channel(1)
+          sc.loop_start(i,start[i])
+          sc.loop_end(i,length[i])
+          sc.position(i,start[i])
+          sc.rec(i,0)
+        end
+        position = {0,0,0,0}
+        recording = false
+        overdub = false
+        buffer_is_clear = true
+        clearing = false
+        update_content(1,1,default_loop_length,128)
+      end)
     end
-    position = {0,0,0,0}  -- Reset all positions
-    recording = false
-    overdub = false
-    buffer_is_clear = true
-    rec_msg = ''
-    update_content(1,1,default_loop_length,128)
   end
   screen_dirty = true
 end
@@ -703,7 +795,7 @@ function enc(n,d)
               update_content(1, new_start, new_start + length[1], 128)
           else
               -- Alt + E2 controls fx level
-              local new_fx_level = util.clamp(fx_level + d/50, 0, 1)
+              local new_fx_level = util.clamp(fx_level + d/10, 0, 1)
               fx_level = new_fx_level
               params:set("fx_level", new_fx_level)
               -- Update all micro-loop levels
@@ -764,7 +856,7 @@ function enc(n,d)
       else
           if alt_mode then
               -- Alt + E3 controls level for individual micro loops
-              local new_level = util.clamp(voice_levels[voice] + d/50, 0, 1)
+              local new_level = util.clamp(voice_levels[voice] + d/10, 0, 1)
               voice_levels[voice] = new_level
               params:set("voice_" .. voice .. "_level", new_level)
               sc.level(voice, new_level * fx_level)  -- Apply the fx_level when setting individual level
@@ -893,7 +985,13 @@ function redraw()
   if not buffer_is_clear and not recording then
     if active_voice == 1 then
       screen.move(10,10)
-      screen.text('looplooploop')
+      if clearing then
+        screen.level(6)
+        screen.text('fading away...')
+      else
+        screen.level(15)
+        screen.text('k3 to clear')
+      end
       
       if alt_mode then
         screen.level(15)
@@ -904,11 +1002,11 @@ function redraw()
       if alt_mode then
         -- Show level
         screen.move(10,60)
-        screen.text(string.format('fx lvl %.2f', fx_level))
+        screen.text(string.format('fx lvl %.1f', fx_level))
 
         -- Show micro-loop fx level
         screen.move(120,60)
-        screen.text_right(string.format('main lvl %.2f', voice_levels[1]))
+        screen.text_right(string.format('main lvl %.1f', voice_levels[1]))
       end
     else
       screen.move(10,10)
@@ -938,9 +1036,11 @@ function redraw()
   end
 
   -- rec message
-  screen.level(6)
-  screen.move(10,60)
-  screen.text(rec_msg)
+  if not alt_mode then
+    screen.level(6)
+    screen.move(10,60)
+    screen.text(rec_msg)
+  end
 
   screen.update()
 end
