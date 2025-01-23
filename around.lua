@@ -986,7 +986,7 @@ function redraw()
   screen.stroke()
 
   -- Display info for selected loop
-  if not buffer_is_clear and not recording then
+  if not buffer_is_clear and not recording and not fading_out then
     if active_voice == 1 then
       screen.move(10,10)
       if clearing then
@@ -1031,12 +1031,15 @@ function redraw()
         screen.text_right(string.format('lvl %.2f', voice_levels[active_voice]))
       end
     end
-  elseif recording then
+  elseif recording and not fading_out then
     screen.move(10,10)
     screen.text('k2 again to loop')
-  else
+  elseif buffer_is_clear then
     screen.move(10,10)
     screen.text('k2 to rec')
+  elseif fading_out then
+    screen.move(10,10)
+    screen.text('fading out...')
   end
 
   -- rec message
