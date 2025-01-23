@@ -34,6 +34,7 @@ rate = 1.0
 
 fx_fade_time = 0 -- this controls how quickly the fx level fades in after recording/clearing
 clearing = false
+fading_out = false
 
 default_loop_length = 15
 length = {default_loop_length, default_loop_length, default_loop_length, default_loop_length}
@@ -632,6 +633,7 @@ end
 
 -- fade out
 function start_fx_fade_out()
+  fading_out = true
   sc.play(1, 0) -- Stop main loop immediately
   local start_level = fx_level
   local main_start_level = voice_levels[1]
@@ -662,6 +664,7 @@ function start_fx_fade_out()
       sc.level(v, 0)
     end
     sc.level(1, voice_levels[1]) -- Restore main loop level
+    fading_out = false
   end)
 end
 
@@ -710,7 +713,7 @@ function key(n,z)
       active_voice = 1
       rec_msg = ''
       start_fx_fade_in()
-    elseif overdub then
+    elseif overdub and not fading_out then
       overdub = false
       sc.rec(1,0)
       rec_msg = ''
@@ -722,7 +725,7 @@ function key(n,z)
       sc.play(1,1)
       rec_msg = 'rec'
       buffer_is_clear = false
-    else
+    elseif not fading_out then
       overdub = true
       local current_pos = position[1]
       sc.position(1, current_pos)
@@ -991,7 +994,7 @@ function redraw()
         screen.text('fading away...')
       else
         screen.level(15)
-        screen.text('k3 to clear')
+        screen.text('k2 overdub   k3 clear')
       end
       
       if alt_mode then
