@@ -1069,11 +1069,3 @@ function redraw_clock()
       end
     end
 end
-
-
-
-
--- UTILITY TO RESTART SCRIPT FROM MAIDEN
-function r()
-norns.script.load(norns.state.script)
-end
